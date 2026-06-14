@@ -112,6 +112,18 @@ async function main() {
     ],
   });
 
+  await prisma.user.upsert({
+    where: { email: "demo@mantis.ai" },
+    update: {},
+    create: {
+      name: "Demo User",
+      email: "demo@mantis.ai",
+      passwordHash: demoPasswordHash,
+      role: "USER",
+      avatar: "⚡",
+    },
+  });
+
   await prisma.user.create({
     data: {
       name: "Demo Customer",

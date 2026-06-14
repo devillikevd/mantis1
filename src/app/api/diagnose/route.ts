@@ -1,3 +1,4 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { getMarketplaceProduct } from "@/lib/marketplace";
 
@@ -120,6 +121,120 @@ function createReply(product: { name: string; description?: string | null }, tex
   ].join("\n");
 }
 
+async function getGeminiReply(product: { name: string; description?: string | null; company?: { name?: string | null } | null }, messages: { role: string; content: string }[]) {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!apiKey) return null;
+
+  const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
+  const recentHistory = messages
+    .slice(-6)
+    .map((message) => `${message.role === "user" ? "User" : "Assistant"}: ${message.content}`)
+    .join("\n");
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        generationConfig: {
+          temperature: 0.35,
+          maxOutputTokens: 500,
+        },
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `You are Mantis AI, a troubleshooting assistant for industrial products. Use the product context and recent conversation.
+Product: ${product.name}${product.company?.name ? ` | Company: ${product.company.name}` : ""}
+Description: ${product.description || "No extra description provided."}
+Current conversation:
+${recentHistory}
+
+Latest user symptom: ${lastUserMessage?.content || "No symptom provided."}
+
+Return JSON only with fields: reply, phase, confidence. The reply should include: 1) a brief summary, 2) the likely fault path, 3) 2-4 practical next steps, and 4) a confidence percentage between 0 and 100. Do not claim certainty beyond the evidence provided.`,
+              },
+            ],
+          },
+        ],
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Gemini request failed: ${response.status}`);
+  }
+
+  const data = (await response.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+
+  const raw = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("\n") || "";
+
+  try {
+    const parsed = JSON.parse(raw) as { reply?: string; phase?: string; confidence?: number };
+    return {
+      reply: parsed.reply || raw,
+      phase: parsed.phase || "DIAGNOSIS",
+      confidence: typeof parsed.confidence === "number" ? parsed.confidence : 72,
+    };
+  } catch {
+    return {
+      reply: raw || "I’m unable to generate a model response right now.",
+      phase: "DIAGNOSIS",
+      confidence: 72,
+    };
+  }
+}
+
+async function getAnthropicReply(product: { name: string; description?: string | null; company?: { name?: string | null } | null }, messages: { role: string; content: string }[]) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+
+  const client = new Anthropic({ apiKey });
+  const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
+  const recentHistory = messages
+    .slice(-6)
+    .map((message) => `${message.role === "user" ? "User" : "Assistant"}: ${message.content}`)
+    .join("\n");
+
+  const response = await client.messages.create({
+    model: process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-latest",
+    max_tokens: 700,
+    temperature: 0.35,
+    system:
+      "You are Mantis AI, a troubleshooting assistant for industrial products. Give concise, practical guidance. Reply with JSON only using fields: reply, phase, confidence.",
+    messages: [
+      {
+        role: "user",
+        content: `Product: ${product.name}${product.company?.name ? ` | Company: ${product.company.name}` : ""}\nDescription: ${product.description || "No extra description provided."}\nCurrent conversation:\n${recentHistory}\n\nLatest user symptom: ${lastUserMessage?.content || "No symptom provided."}\n\nProvide a diagnostic response that includes: 1) a brief summary, 2) the likely fault path, 3) 2-4 practical next steps, and 4) a confidence percentage between 0 and 100. Return JSON only.`,
+      },
+    ],
+  });
+
+  const text = response.content
+    .filter((block): block is { type: "text"; text: string } => block.type === "text")
+    .map((block) => block.text)
+    .join("\n");
+
+  try {
+    const parsed = JSON.parse(text) as { reply?: string; phase?: string; confidence?: number };
+    return {
+      reply: parsed.reply || text,
+      phase: parsed.phase || "DIAGNOSIS",
+      confidence: typeof parsed.confidence === "number" ? parsed.confidence : 72,
+    };
+  } catch {
+    return {
+      reply: text || "I’m unable to generate a model response right now.",
+      phase: "DIAGNOSIS",
+      confidence: 72,
+    };
+  }
+}
+
 async function getModelReply(product: { name: string; description?: string | null; company?: { name?: string | null } | null }, messages: { role: string; content: string }[]) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
@@ -199,6 +314,32 @@ export async function POST(request: Request) {
     }
 
     const phase = determinePhase(messages);
+
+    try {
+      const geminiResponse = await getGeminiReply(product, messages);
+      if (geminiResponse) {
+        return NextResponse.json({
+          reply: geminiResponse.reply,
+          phase: geminiResponse.phase,
+          confidence: Math.min(95, Math.max(0, geminiResponse.confidence)),
+        });
+      }
+    } catch (error) {
+      console.warn("Gemini diagnosis unavailable, falling back to the existing providers or heuristics:", error);
+    }
+
+    try {
+      const anthropicResponse = await getAnthropicReply(product, messages);
+      if (anthropicResponse) {
+        return NextResponse.json({
+          reply: anthropicResponse.reply,
+          phase: anthropicResponse.phase,
+          confidence: Math.min(95, Math.max(0, anthropicResponse.confidence)),
+        });
+      }
+    } catch (error) {
+      console.warn("Anthropic diagnosis unavailable, falling back to OpenAI or heuristics:", error);
+    }
 
     try {
       const modelResponse = await getModelReply(product, messages);

@@ -17,6 +17,7 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   companies    Company[]
+  sessions     DiagnosticSession[]
 }
 
 model Company {
@@ -30,6 +31,16 @@ model Company {
   products   Product[]
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+}
+
+model DiagnosticSession {
+  id          String   @id @default(cuid())
+  userId      String
+  description String
+  aiResponse  String
+  severity    Int
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
 }
 
 model Product {

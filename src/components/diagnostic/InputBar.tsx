@@ -1,9 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Paperclip, Mic, Send, X, Image } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { motion } from "framer-motion";
+import { Paperclip, Mic, Send } from "lucide-react";
 import { toast } from "sonner";
 
 interface InputBarProps {
@@ -11,9 +10,10 @@ interface InputBarProps {
   onInputChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onSubmit: (event: React.FormEvent) => void;
   disabled?: boolean;
+  onImageUpload?: (file: File) => void;
 }
 
-export default function InputBar({ input, onInputChange, onSubmit, disabled }: InputBarProps) {
+export default function InputBar({ input, onInputChange, onSubmit, disabled, onImageUpload }: InputBarProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,7 +49,6 @@ export default function InputBar({ input, onInputChange, onSubmit, disabled }: I
         const chunks: BlobPart[] = [];
         mediaRecorder.ondataavailable = (event) => chunks.push(event.data);
         mediaRecorder.onstop = () => {
-          const blob = new Blob(chunks, { type: "audio/webm" });
           toast.success("Voice capture is ready for a future AI integration step");
           stream.getTracks().forEach((track) => track.stop());
           setIsRecording(false);
@@ -62,7 +61,7 @@ export default function InputBar({ input, onInputChange, onSubmit, disabled }: I
       }
     } else {
       toast.info("Voice capture stopped");
-      onSubmit(event as unknown as React.FormEvent);
+      setIsRecording(false);
     }
   };
 
@@ -75,14 +74,14 @@ export default function InputBar({ input, onInputChange, onSubmit, disabled }: I
 
   return (
     <form onSubmit={onSubmit} className="relative flex items-end gap-2">
-      <input 
-        type="file" 
-        accept="image/*" 
-        className="hidden" 
-        ref={fileInputRef} 
-        onChange={handleFileChange} 
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        ref={fileInputRef}
+        onChange={handleFileChange}
       />
-      
+
       <button
         type="button"
         disabled={disabled}
@@ -90,6 +89,15 @@ export default function InputBar({ input, onInputChange, onSubmit, disabled }: I
         className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-muted-foreground transition hover:bg-white/10 hover:text-white disabled:opacity-50"
       >
         <Paperclip className="h-5 w-5" />
+      </button>
+
+      <button
+        type="button"
+        onClick={handleVoiceRecord}
+        disabled={disabled}
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-muted-foreground transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+      >
+        <Mic className="h-5 w-5" />
       </button>
 
       <div className="relative flex-1">
@@ -109,8 +117,9 @@ export default function InputBar({ input, onInputChange, onSubmit, disabled }: I
           disabled={disabled || !input.trim()}
           className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500 text-black transition disabled:opacity-50"
         >
-        </Button>
+          <Send className="h-4 w-4" />
+        </motion.button>
       </div>
-    </div>
+    </form>
   );
 }

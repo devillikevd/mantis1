@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { motion } from "framer-motion";
@@ -12,7 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import DiagnosticOrb from "@/components/three/DiagnosticOrb";
+
+const DiagnosticOrb = dynamic(() => import("@/components/three/DiagnosticOrb"), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full rounded-3xl border border-border bg-background/70 animate-pulse" />,
+});
 
 const testimonials = [
   {
@@ -50,6 +55,30 @@ export default function LoginPage() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleDemoLogin = async () => {
+    setIsLoading(true);
+
+    try {
+      const result = await signIn("credentials", {
+        email: "demo@company.com",
+        password: "demo123",
+        redirect: false,
+      });
+
+      if (result?.error) {
+        toast.error("Demo login is unavailable right now");
+        return;
+      }
+
+      toast.success("Demo session ready");
+      router.push("/products");
+    } catch {
+      toast.error("Unable to start demo session");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
@@ -76,7 +105,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-5">
-      <div className="hidden lg:flex lg:col-span-2 bg-gradient-to-br from-indigo-500/10 via-background to-cyan-500/10 p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:col-span-2 bg-linear-to-br from-indigo-500/10 via-background to-cyan-500/10 p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute inset-0 opacity-30">
           {Array.from({ length: 18 }).map((_, index) => (
             <div
@@ -89,7 +118,7 @@ export default function LoginPage() {
 
         <div className="relative z-10">
           <Link href="/" className="mb-12 flex items-center space-x-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-500">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-linear-to-r from-indigo-500 to-cyan-500">
               <span className="text-xl font-bold text-white">M</span>
             </div>
             <span className="font-display text-2xl gradient-text">MANTIS</span>
@@ -131,6 +160,17 @@ export default function LoginPage() {
             Continue with Google
           </Button>
 
+          <Button
+            type="button"
+            variant="outline"
+            className="mb-6 w-full border-emerald-500/60 bg-emerald-500/8 text-emerald-200 hover:bg-emerald-500/12"
+            size="lg"
+            disabled={isLoading}
+            onClick={handleDemoLogin}
+          >
+            ⚡ Try Demo — No signup needed
+          </Button>
+
           <div className="relative mb-6">
             <Separator />
             <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs uppercase tracking-[0.35em] text-muted-foreground">or continue with email</span>
@@ -150,7 +190,7 @@ export default function LoginPage() {
               <Input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required disabled={isLoading} className="mt-1" />
             </div>
 
-            <Button type="submit" className="w-full bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600" size="lg" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-linear-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600" size="lg" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign In"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import DiagnosticOrb from "@/components/three/DiagnosticOrb";
+
+const DiagnosticOrb = dynamic(() => import("@/components/three/DiagnosticOrb"), {
+  ssr: false,
+  loading: () => <div className="h-[280px] w-full max-w-[340px] rounded-full border border-border bg-background/70 animate-pulse" />,
+});
 import ParticleBackground from "@/components/effects/ParticleBackground";
 import TypewriterText from "@/components/effects/TypewriterText";
 

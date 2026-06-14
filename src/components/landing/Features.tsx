@@ -23,7 +23,7 @@ export default function Features() {
       <div className="grid gap-6 md:grid-cols-3">
         {features.map((feature) => (
           <article key={feature.title} className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-indigo-500/5 hover:border-cyan-400/30 hover:bg-white/8 transition-all">
-            <div className="mb-4 h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500" />
+            <div className="mb-4 h-10 w-10 rounded-xl bg-linear-to-br from-indigo-500 to-cyan-500" />
             <h3 className="text-xl font-semibold text-white">{feature.title}</h3>
             <p className="mt-3 text-sm text-muted-foreground">{feature.text}</p>
           </article>
