@@ -62,53 +62,53 @@ export default function InputBar({ input, onInputChange, onSubmit, disabled }: I
       }
     } else {
       toast.info("Voice capture stopped");
-      setIsRecording(false);
+      onSubmit(event as unknown as React.FormEvent);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onImageUpload) {
+      onImageUpload(file);
     }
   };
 
   return (
-    <div className="space-y-2">
-      {selectedImage && (
-        <div className="flex items-center gap-2 rounded-xl bg-muted/80 p-2 text-sm">
-          <Image className="h-4 w-4 text-cyan-200" />
-          <span className="flex-1 truncate">{selectedImage.name}</span>
-          <button type="button" onClick={() => setSelectedImage(null)} className="rounded-md p-1 hover:bg-background">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
+    <form onSubmit={onSubmit} className="relative flex items-end gap-2">
+      <input 
+        type="file" 
+        accept="image/*" 
+        className="hidden" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+      />
+      
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => fileInputRef.current?.click()}
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-muted-foreground transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+      >
+        <Paperclip className="h-5 w-5" />
+      </button>
 
-      <div className="flex items-end gap-2">
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
-
-        <Button type="button" size="icon" variant="ghost" className="shrink-0" disabled={disabled} onClick={() => fileInputRef.current?.click()}>
-          <Paperclip className="h-5 w-5" />
-        </Button>
-
-        <div className="relative flex-1">
-          <Textarea
-            value={input}
-            onChange={onInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Describe the symptom, recent change, or error you are seeing..."
-            disabled={disabled}
-            className="min-h-[60px] max-h-40 resize-none pr-12"
-            rows={1}
-          />
-        </div>
-
-        <Button type="button" size="icon" variant="ghost" className={`shrink-0 ${isRecording ? "text-red-500" : ""}`} disabled={disabled} onClick={handleVoiceRecord}>
-          <Mic className="h-5 w-5" />
-        </Button>
-
-        <Button
-          type="button"
-          size="icon"
-          className="shrink-0 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600"
-          disabled={disabled || (!input.trim() && !selectedImage)}
-          onClick={(event) => onSubmit(event as unknown as React.FormEvent)}
+      <div className="relative flex-1">
+        <textarea
+          value={input}
+          onChange={onInputChange}
+          onKeyDown={handleKeyDown}
+          placeholder="Describe the issue, type a symptom, or upload a photo..."
+          disabled={disabled}
+          className="block w-full resize-none rounded-xl border border-border bg-background/50 px-4 py-3.5 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 disabled:opacity-50"
+          rows={1}
+        />
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          type="submit"
+          disabled={disabled || !input.trim()}
+          className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500 text-black transition disabled:opacity-50"
         >
-          <Send className="h-5 w-5" />
         </Button>
       </div>
     </div>

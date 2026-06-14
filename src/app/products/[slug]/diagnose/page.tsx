@@ -9,6 +9,9 @@ import ConfidenceGauge from "@/components/diagnostic/ConfidenceGauge";
 import DiagnosticStepper from "@/components/diagnostic/DiagnosticStepper";
 import MindMap from "@/components/diagnostic/MindMap";
 import SymptomChips from "@/components/diagnostic/SymptomChips";
+import BootSequence from "@/components/diagnostic/BootSequence";
+import SystemMetrics from "@/components/diagnostic/SystemMetrics";
+import DispatchRadar from "@/components/diagnostic/DispatchRadar";
 import type { DiagnosticSession, Message } from "@/types";
 
 export default function DiagnosePage() {
@@ -54,6 +57,9 @@ export default function DiagnosePage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const [showBoot, setShowBoot] = useState(true);
+  const [showRadar, setShowRadar] = useState(false);
+
   useEffect(() => {
     if (product && session.mindMap.nodes.length === 0) {
       setSession((prev) => ({
@@ -74,7 +80,7 @@ export default function DiagnosePage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() && !input.includes("[IMAGE SCANNED")) return;
 
     const userMessage = input.trim();
     const nextMessages = [
@@ -82,7 +88,7 @@ export default function DiagnosePage() {
       { id: `${Date.now()}-user`, role: "user" as const, content: userMessage },
     ];
 
-    setSession((prev) => ({ ...prev, messages: nextMessages, phase: "INVESTIGATION", confidence: 65 }));
+    setSession((prev) => ({ ...prev, messages: nextMessages, phase: "INVESTIGATION", confidence: prev.confidence > 50 ? prev.confidence + 5 : 65 }));
     setInput("");
     setIsLoading(true);
 
@@ -151,58 +157,73 @@ export default function DiagnosePage() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="sticky top-16 z-40 border-b border-border bg-background/95 backdrop-blur-xl">
-        <div className="container mx-auto px-4 py-4">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-cyan-200/80">AI diagnostic</p>
-              <h1 className="text-xl font-black text-white sm:text-2xl">{product.name}</h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={handleNewSession} className="rounded-full border border-border bg-background/70 px-4 py-2 text-sm text-muted-foreground hover:text-white">New session</button>
-              <a href={`/products/${product.slug}`} className="rounded-full border border-border bg-background/70 px-4 py-2 text-sm text-muted-foreground hover:text-white">Back to product</a>
+    <>
+      {showBoot && <BootSequence onComplete={() => setShowBoot(false)} />}
+      {showRadar && <DispatchRadar onComplete={() => { setShowRadar(false); handleNewSession(); }} />}
+      
+      {!showBoot && (
+        <main className="min-h-screen bg-background">
+          <div className="sticky top-16 z-40 border-b border-border bg-background/95 backdrop-blur-xl">
+            <div className="container mx-auto px-4 py-4">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.35em] text-cyan-200/80">AI diagnostic</p>
+                  <h1 className="text-xl font-black text-white sm:text-2xl">{product.name}</h1>
+                </div>
+                <div className="flex items-center gap-2">
+                  {session.confidence >= 85 && (
+                    <button
+                      onClick={() => setShowRadar(true)}
+                      className="animate-pulse rounded-full border border-emerald-500 bg-emerald-500/20 px-4 py-2 text-sm font-bold tracking-wider text-emerald-400 hover:bg-emerald-500 hover:text-black hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all"
+                    >
+                      DISPATCH TECHNICIAN
+                    </button>
+                  )}
+                  <button type="button" onClick={handleNewSession} className="rounded-full border border-border bg-background/70 px-4 py-2 text-sm text-muted-foreground hover:text-white">New session</button>
+                  <a href={`/products/${product.slug}`} className="rounded-full border border-border bg-background/70 px-4 py-2 text-sm text-muted-foreground hover:text-white">Back to product</a>
+                </div>
+              </div>
+              <DiagnosticStepper currentPhase={session.phase} confidence={session.confidence} />
             </div>
           </div>
-          <DiagnosticStepper currentPhase={session.phase} confidence={session.confidence} />
-        </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-6">
-        <DiagnosticLayout
-          leftPanel={
-            <div className="flex h-full flex-col gap-6">
-              <section className="glass rounded-3xl p-4">
-                <div className="flex items-center gap-3">
-                  {product.company?.logo ? <img src={product.company.logo} alt="" className="h-12 w-12 rounded-xl object-cover" /> : null}
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Product</div>
-                    <div className="text-lg font-semibold text-white">{product.name}</div>
-                    <div className="text-sm text-muted-foreground">{product.company?.name}</div>
-                  </div>
+          <div className="container mx-auto px-4 py-6">
+            <DiagnosticLayout
+              leftPanel={
+                <div className="flex h-full flex-col gap-6">
+                  <section className="glass rounded-3xl p-4">
+                    <div className="flex items-center gap-3">
+                      {product.company?.logo ? <img src={product.company.logo} alt="" className="h-12 w-12 rounded-xl object-cover" /> : null}
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Product</div>
+                        <div className="text-lg font-semibold text-white">{product.name}</div>
+                        <div className="text-sm text-muted-foreground">{product.company?.name}</div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <SystemMetrics isProcessing={isLoading} />
+                  <ConfidenceGauge confidence={session.confidence} phase={session.phase} />
+                  <section className="glass flex-1 rounded-3xl p-4">
+                    <h4 className="mb-3 text-sm font-semibold text-white">Diagnostic mind map</h4>
+                    <MindMap nodes={session.mindMap.nodes} links={session.mindMap.links} />
+                  </section>
                 </div>
-              </section>
-
-              <SymptomChips category={product.category || "Default"} />
-              <ConfidenceGauge confidence={session.confidence} phase={session.phase} />
-              <section className="glass flex-1 rounded-3xl p-4">
-                <h4 className="mb-3 text-sm font-semibold text-white">Diagnostic mind map</h4>
-                <MindMap nodes={session.mindMap.nodes} links={session.mindMap.links} />
-              </section>
-            </div>
-          }
-          chatPanel={
-            <ChatPanel
-              messages={messages}
-              input={input}
-              onInputChange={handleInputChange}
-              onSubmit={handleSubmit}
-              productName={product.name}
-              isLoading={isLoading}
+              }
+              chatPanel={
+                <ChatPanel
+                  messages={messages}
+                  input={input}
+                  onInputChange={handleInputChange}
+                  onSubmit={handleSubmit}
+                  productName={product.name}
+                  isLoading={isLoading}
+                />
+              }
             />
-          }
-        />
-      </div>
-    </main>
+          </div>
+        </main>
+      )}
+    </>
   );
 }
