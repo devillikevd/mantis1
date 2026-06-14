@@ -32,7 +32,8 @@ const demoUsers = {
 
 export const authOptions: NextAuthConfig = {
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "dev-secret-change-me",
-  adapter: PrismaAdapter(prisma),
+  trustHost: true,
+  adapter: process.env.DATABASE_URL ? PrismaAdapter(prisma) : undefined,
   session: {
     strategy: "jwt" as const,
   },

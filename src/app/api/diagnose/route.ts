@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { getMarketplaceProduct } from "@/lib/marketplace";
+import { prisma } from "@/lib/prisma";
 
 function determinePhase(messages: { role: string; content: string }[]) {
   if (messages.length <= 2) return "SYMPTOMS";
@@ -121,7 +122,11 @@ function createReply(product: { name: string; description?: string | null }, tex
   ].join("\n");
 }
 
-async function getGeminiReply(product: { name: string; description?: string | null; company?: { name?: string | null } | null }, messages: { role: string; content: string }[]) {
+async function getGeminiReply(
+  product: { name: string; description?: string | null; company?: { name?: string | null } | null },
+  messages: { role: string; content: string }[],
+  options?: { imageBase64?: string | null; imageMimeType?: string | null; manualContext?: string[] },
+) {
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) return null;
 
@@ -131,6 +136,36 @@ async function getGeminiReply(product: { name: string; description?: string | nu
     .map((message) => `${message.role === "user" ? "User" : "Assistant"}: ${message.content}`)
     .join("\n");
 
+  const manualContextLines = (options?.manualContext && options.manualContext.length > 0
+    ? options.manualContext
+    : [product.description, `Company: ${product.company?.name || "Unknown"}`, "Manual excerpts: use the product manual and field notes whenever they are available."])
+    .filter(Boolean)
+    .map((item) => `- ${item}`)
+    .join("\n");
+
+  const prompt = `You are Mantis AI, a troubleshooting assistant for industrial products. Use the product context, manual context, and recent conversation to produce practical diagnostic guidance.
+Product: ${product.name}${product.company?.name ? ` | Company: ${product.company.name}` : ""}
+Description: ${product.description || "No extra description provided."}
+Manual context:
+${manualContextLines}
+Current conversation:
+${recentHistory}
+
+Latest user symptom: ${lastUserMessage?.content || "No symptom provided."}
+
+If an image is provided, use it as evidence for the diagnosis. Return JSON only with fields: reply, phase, confidence. The reply should include: 1) a brief summary, 2) the likely fault path, 3) 2-4 practical next steps, and 4) a confidence percentage between 0 and 100. Do not claim certainty beyond the evidence provided.`;
+
+  const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [{ text: prompt }];
+
+  if (options?.imageBase64 && options.imageMimeType) {
+    parts.push({
+      inlineData: {
+        mimeType: options.imageMimeType,
+        data: options.imageBase64,
+      },
+    });
+  }
+
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
     {
@@ -139,24 +174,12 @@ async function getGeminiReply(product: { name: string; description?: string | nu
       body: JSON.stringify({
         generationConfig: {
           temperature: 0.35,
-          maxOutputTokens: 500,
+          maxOutputTokens: 700,
         },
         contents: [
           {
             role: "user",
-            parts: [
-              {
-                text: `You are Mantis AI, a troubleshooting assistant for industrial products. Use the product context and recent conversation.
-Product: ${product.name}${product.company?.name ? ` | Company: ${product.company.name}` : ""}
-Description: ${product.description || "No extra description provided."}
-Current conversation:
-${recentHistory}
-
-Latest user symptom: ${lastUserMessage?.content || "No symptom provided."}
-
-Return JSON only with fields: reply, phase, confidence. The reply should include: 1) a brief summary, 2) the likely fault path, 3) 2-4 practical next steps, and 4) a confidence percentage between 0 and 100. Do not claim certainty beyond the evidence provided.`,
-              },
-            ],
+            parts,
           },
         ],
       }),
@@ -297,7 +320,7 @@ async function getModelReply(product: { name: string; description?: string | nul
 
 export async function POST(request: Request) {
   try {
-    const { messages, productId } = await request.json();
+    const { messages, productId, sessionId, imageBase64, imageMimeType, manualContext } = await request.json();
 
     if (!Array.isArray(messages) || !productId) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -316,7 +339,11 @@ export async function POST(request: Request) {
     const phase = determinePhase(messages);
 
     try {
-      const geminiResponse = await getGeminiReply(product, messages);
+      const geminiResponse = await getGeminiReply(product, messages, {
+        imageBase64,
+        imageMimeType,
+        manualContext,
+      });
       if (geminiResponse) {
         return NextResponse.json({
           reply: geminiResponse.reply,
@@ -357,6 +384,23 @@ export async function POST(request: Request) {
     const issueType = detectIssueType(lastMessage.content);
     const confidence = Math.min(95, calculateConfidence(messages, issueType));
     const reply = createReply(product, lastMessage.content, phase);
+
+    try {
+      if (process.env.DATABASE_URL) {
+        await prisma.diagnosticSession.create({
+          data: {
+            description: lastMessage.content,
+            aiResponse: reply,
+            severity: Math.max(1, Math.min(5, Math.ceil(confidence / 20))),
+            status: "ACTIVE",
+            productId: product.id,
+            userId: null,
+          },
+        });
+      }
+    } catch (error) {
+      console.warn("Unable to persist diagnostic session:", error);
+    }
 
     return NextResponse.json({ reply, phase, confidence });
   } catch (error) {

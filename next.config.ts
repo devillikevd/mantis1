@@ -1,15 +1,13 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Required for @react-three/fiber on Vercel
   transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
-  // Ignore TypeScript errors during build (for fast deployment)
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Ignore ESLint errors during build
-  eslint: {
-    ignoreDuringBuilds: true,
+  turbopack: {
+    root: path.resolve("."),
   },
 };
 

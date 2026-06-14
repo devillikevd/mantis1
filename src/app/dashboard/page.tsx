@@ -6,33 +6,82 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const session = await auth();
+  let session;
+
+  try {
+    session = await auth();
+  } catch (error) {
+    console.error("Dashboard auth error:", error);
+    session = null;
+  }
 
   if (!session?.user?.email) {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: (session.user as { id?: string }).id ?? "" },
-    include: {
-      companies: {
-        include: {
-          products: {
-            where: { status: "ACTIVE" },
-            orderBy: { createdAt: "desc" },
+  let user = null;
+  let dbError = false;
+
+  try {
+    user = await prisma.user.findUnique({
+      where: { id: (session.user as { id?: string }).id ?? "" },
+      include: {
+        companies: {
+          include: {
+            products: {
+              where: { status: "ACTIVE" },
+              orderBy: { createdAt: "desc" },
+            },
           },
+          orderBy: { createdAt: "desc" },
         },
-        orderBy: { createdAt: "desc" },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.error("Dashboard DB error:", error);
+    dbError = true;
+  }
+
+  const totalProducts = user?.companies.reduce((sum, company) => sum + company.products.length, 0) ?? 0;
+  const totalCompanies = user?.companies.length ?? 0;
+
+  if (!user && dbError) {
+    return (
+      <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.08),_transparent_30%),linear-gradient(180deg,#04070f_0%,#070b14_45%,#04070f_100%)] text-foreground py-24">
+        <div className="container mx-auto px-4">
+          <section className="rounded-[2rem] border border-amber-400/30 bg-amber-400/10 p-8 text-amber-50 shadow-2xl shadow-amber-500/10">
+            <p className="text-xs uppercase tracking-[0.35em] text-amber-100/80">Live status</p>
+            <h1 className="mt-3 text-3xl font-black text-white md:text-4xl">Dashboard is running in safe fallback mode</h1>
+            <p className="mt-3 max-w-2xl text-sm text-amber-50/90 md:text-base">
+              The database connection is currently unavailable, so the dashboard is showing a stable fallback view instead of crashing. This keeps the app usable while the database env is fixed.
+            </p>
+          </section>
+
+          <section className="mt-8 grid gap-6 md:grid-cols-3">
+            <article className="rounded-[1.5rem] border border-white/10 bg-slate-950/80 p-6 shadow-xl shadow-slate-900/20">
+              <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Companies</p>
+              <p className="mt-4 text-4xl font-black text-white">{totalCompanies}</p>
+              <p className="mt-2 text-sm text-slate-300">Live company profiles are unavailable right now.</p>
+            </article>
+            <article className="rounded-[1.5rem] border border-white/10 bg-slate-950/80 p-6 shadow-xl shadow-slate-900/20">
+              <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Products</p>
+              <p className="mt-4 text-4xl font-black text-white">{totalProducts}</p>
+              <p className="mt-2 text-sm text-slate-300">The product catalog is currently being restored.</p>
+            </article>
+            <article className="rounded-[1.5rem] border border-white/10 bg-slate-950/80 p-6 shadow-xl shadow-slate-900/20">
+              <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Status</p>
+              <p className="mt-4 text-2xl font-black text-emerald-300">Fallback</p>
+              <p className="mt-2 text-sm text-slate-300">You can continue using the landing and auth pages while the database is repaired.</p>
+            </article>
+          </section>
+        </div>
+      </main>
+    );
+  }
 
   if (!user) {
     redirect("/login");
   }
-
-  const totalProducts = user.companies.reduce((sum, company) => sum + company.products.length, 0);
-  const totalCompanies = user.companies.length;
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.08),_transparent_30%),linear-gradient(180deg,#04070f_0%,#070b14_45%,#04070f_100%)] text-foreground py-24">

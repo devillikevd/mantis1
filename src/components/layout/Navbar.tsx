@@ -51,7 +51,7 @@ export default function Navbar() {
           <div className="hidden items-center gap-2 md:flex">
             <LanguageToggle />
             <ThemeToggle />
-            <Link href="/signup"><Button size="sm" className="rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600">Get Started</Button></Link>
+            <Link href="/register"><Button size="sm" className="rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600">Get Started</Button></Link>
           </div>
 
           <button className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 md:hidden" onClick={() => setOpen((v) => !v)} aria-label="Toggle navigation">
@@ -70,7 +70,7 @@ export default function Navbar() {
               <LanguageToggle />
               <ThemeToggle />
             </div>
-            <Link href="/signup" onClick={() => setOpen(false)}><Button className="w-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500">Get Started</Button></Link>
+            <Link href="/register" onClick={() => setOpen(false)}><Button className="w-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500">Get Started</Button></Link>
           </div>
         </motion.div>
       )}

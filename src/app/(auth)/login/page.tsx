@@ -40,10 +40,16 @@ const testimonials = [
   },
 ];
 
+const floatingDots = Array.from({ length: 18 }, (_, index) => ({
+  left: `${(index * 11 + 7) % 100}%`,
+  top: `${(index * 13 + 3) % 100}%`,
+  delay: `${(index * 0.18).toFixed(2)}s`,
+}));
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("demo@company.com");
-  const [password, setPassword] = useState("demo123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
@@ -66,7 +72,7 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        toast.error("Demo login is unavailable right now");
+        toast.error("Demo login is unavailable right now. Try your email/password or sign up.");
         return;
       }
 
@@ -107,11 +113,11 @@ export default function LoginPage() {
     <div className="min-h-screen grid lg:grid-cols-5">
       <div className="hidden lg:flex lg:col-span-2 bg-linear-to-br from-indigo-500/10 via-background to-cyan-500/10 p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute inset-0 opacity-30">
-          {Array.from({ length: 18 }).map((_, index) => (
+          {floatingDots.map((dot, index) => (
             <div
               key={index}
               className="absolute h-1 w-1 rounded-full bg-cyan-400 animate-float"
-              style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 2}s` }}
+              style={{ left: dot.left, top: dot.top, animationDelay: dot.delay }}
             />
           ))}
         </div>
@@ -168,7 +174,7 @@ export default function LoginPage() {
             disabled={isLoading}
             onClick={handleDemoLogin}
           >
-            ⚡ Try Demo — No signup needed
+            ⚡ Try Demo Account
           </Button>
 
           <div className="relative mb-6">
@@ -197,17 +203,17 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            Don’t have an account? <Link href="/signup" className="font-semibold text-indigo-400 hover:text-indigo-300">Sign up for free</Link>
+            Don’t have an account? <Link href="/register" className="font-semibold text-indigo-400 hover:text-indigo-300">Sign up for free</Link>
           </div>
 
           <div className="mt-8 rounded-lg border border-border bg-background/70 p-4 shadow-xl shadow-indigo-500/5">
             <div className="mb-2 flex items-center space-x-2">
               <Sparkles className="h-4 w-4 text-cyan-400" />
-              <span className="text-sm font-semibold">Demo Credentials</span>
+              <span className="text-sm font-semibold">Quick preview</span>
             </div>
             <div className="space-y-1 text-xs text-muted-foreground">
-              <div>Email: demo@company.com</div>
-              <div>Password: demo123</div>
+              <div>Use demo@company.com / demo123 for a live walkthrough.</div>
+              <div>Or sign in with your real account to continue your workspace.</div>
             </div>
           </div>
         </motion.div>

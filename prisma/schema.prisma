@@ -34,13 +34,26 @@ model Company {
 }
 
 model DiagnosticSession {
-  id          String   @id @default(cuid())
-  userId      String
-  description String
-  aiResponse  String
-  severity    Int
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id])
+  id            String   @id @default(cuid())
+  userId        String?
+  productId     String?
+  description   String
+  aiResponse    String
+  severity      Int
+  status        String   @default("ACTIVE")
+  manualContext Json?
+  createdAt     DateTime @default(now())
+  user          User?    @relation(fields: [userId], references: [id])
+  product       Product? @relation(fields: [productId], references: [id])
+}
+
+model ManualChunk {
+  id        String   @id @default(cuid())
+  productId String
+  source    String?
+  content   String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id])
 }
 
 model Product {
@@ -55,4 +68,6 @@ model Product {
   companyId   String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  sessions    DiagnosticSession[]
+  manualChunks ManualChunk[]
 }

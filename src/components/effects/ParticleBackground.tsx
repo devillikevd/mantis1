@@ -2,15 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+const particlePositions = Array.from({ length: 45 }, (_, index) => ({
+  id: index,
+  left: `${(index * 7 + 5) % 100}%`,
+  top: `${(index * 11 + 3) % 100}%`,
+  duration: 3.2 + (index % 5) * 0.6,
+  delay: `${(index % 8) * 0.25}s`,
+}));
+
 export default function ParticleBackground() {
   const [mounted, setMounted] = useState(false);
-  const particles = useMemo(() => Array.from({ length: 45 }, (_, i) => ({
-    id: i,
-    left: `${Math.random() * 100}%`,
-    top: `${Math.random() * 100}%`,
-    duration: 3 + Math.random() * 4,
-    delay: `${Math.random() * 2}s`,
-  })), []);
+  const particles = useMemo(() => particlePositions, []);
 
   useEffect(() => setMounted(true), []);
 

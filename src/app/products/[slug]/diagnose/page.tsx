@@ -78,11 +78,14 @@ export default function DiagnosePage() {
     setInput(event.target.value);
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (
+    event: React.FormEvent,
+    options?: { imageBase64?: string; imageMimeType?: string; manualContext?: string[] },
+  ) => {
     event.preventDefault();
-    if (!input.trim() && !input.includes("[IMAGE SCANNED")) return;
 
-    const userMessage = input.trim();
+    const userMessage = input.trim() || (options?.imageBase64 ? "Image uploaded for diagnosis." : "");
+    if (!userMessage) return;
     const nextMessages = [
       ...session.messages,
       { id: `${Date.now()}-user`, role: "user" as const, content: userMessage },
@@ -100,6 +103,9 @@ export default function DiagnosePage() {
           messages: nextMessages,
           productId,
           sessionId: session.id,
+          imageBase64: options?.imageBase64,
+          imageMimeType: options?.imageMimeType,
+          manualContext: options?.manualContext ?? [product?.description ?? "", `Product: ${product?.name ?? ""}`],
         }),
       });
 

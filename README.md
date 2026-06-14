@@ -371,12 +371,17 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-# For local development (SQLite — no cloud needed)
-DATABASE_URL="file:./dev.db"
+# PostgreSQL (Neon / Vercel-ready)
+DATABASE_URL="postgresql://..."
 
-# Auth secret (any random string)
-AUTH_SECRET="your-secret-here"
+# Auth
+AUTH_SECRET="your-random-secret"
+NEXTAUTH_SECRET="your-random-secret"
 NEXTAUTH_URL="http://localhost:3000"
+
+# AI
+GEMINI_API_KEY="your-gemini-key"
+GOOGLE_API_KEY="your-google-key"  # optional, only if using Google OAuth
 ```
 
 ### 3. Initialize Database
@@ -408,42 +413,42 @@ Open [http://localhost:3000](http://localhost:3000) and log in with `demo@compan
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/devillikevd/mantis1)
 
-#### Step 1: Create Neon Database
+#### Step 1: Prepare the Production Database
 
-1. Go to [neon.tech](https://neon.tech) → Create free account
-2. Create new project → Copy the **PostgreSQL connection string**
+1. Use your existing Neon/PostgreSQL connection string for `DATABASE_URL`.
+2. The Prisma schema in this repo is already configured for PostgreSQL, so no provider change is needed.
 
-#### Step 2: Update Schema
+#### Step 2: Configure Vercel Environment Variables
 
-Change `prisma/schema.prisma` provider to `postgresql`:
-
-```prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-```
-
-#### Step 3: Deploy on Vercel
-
-1. Push code to GitHub
-2. Go to [vercel.com/new](https://vercel.com/new) → Import your repo
-3. Add **Environment Variables**:
+In Vercel → Project Settings → Environment Variables, add these values for the Production environment (and optionally Preview/Development too):
 
 | Variable | Value |
 | :------- | :---- |
-| `DATABASE_URL` | Your Neon PostgreSQL URL |
-| `AUTH_SECRET` | Random 32+ char string |
+| `DATABASE_URL` | Your Neon/PostgreSQL connection string |
+| `AUTH_SECRET` | Same secret value used for NextAuth |
+| `NEXTAUTH_SECRET` | Same secret value used for NextAuth |
 | `NEXTAUTH_URL` | `https://your-app.vercel.app` |
+| `GEMINI_API_KEY` | Your Gemini / Google AI key |
+| `GOOGLE_API_KEY` | Same Gemini key if you want to reuse the existing AI path |
+| `GOOGLE_CLIENT_ID` | Optional, only if enabling Google OAuth |
+| `GOOGLE_CLIENT_SECRET` | Optional, only if enabling Google OAuth |
 
-4. Click **Deploy** — Vercel auto-runs `prisma generate && next build`
+> The app already uses the real Vercel-friendly env names in the current codebase.
 
-#### Step 4: Seed Production Database
+#### Step 3: Deploy on Vercel
 
-```bash
-# Set your production DATABASE_URL in .env temporarily
-npm run db:seed
-```
+1. Push the latest code to GitHub.
+2. Open [vercel.com/new](https://vercel.com/new) and import the repository.
+3. Ensure the environment variables above are present in the Vercel project settings.
+4. Click **Deploy** — Vercel will run the project build using `prisma generate && next build`.
+
+#### Step 4: Verify the Deployment
+
+After deployment:
+
+- Visit the generated Vercel URL.
+- Confirm the app loads and the diagnostic AI route is reachable.
+- If you use the provided database and AI credentials, no extra code changes should be required.
 
 ---
 

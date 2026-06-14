@@ -13,7 +13,10 @@ interface ChatPanelProps {
   messages: Message[];
   input: string;
   onInputChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onSubmit: (event: React.FormEvent) => void;
+  onSubmit: (
+    event: React.FormEvent,
+    options?: { imageBase64?: string; imageMimeType?: string; manualContext?: string[] },
+  ) => void;
   productName: string;
   isLoading?: boolean;
 }
@@ -22,6 +25,7 @@ export default function ChatPanel({ messages, input, onInputChange, onSubmit, pr
   const endRef = useRef<HTMLDivElement | null>(null);
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const [scannedImage, setScannedImage] = useState<string | null>(null);
+  const [imageAttachment, setImageAttachment] = useState<{ base64: string; mimeType: string } | null>(null);
   const lastSpokenMessageId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -50,7 +54,9 @@ export default function ChatPanel({ messages, input, onInputChange, onSubmit, pr
   const handleImageUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      setScannedImage(e.target?.result as string);
+      const dataUrl = e.target?.result as string;
+      setScannedImage(dataUrl);
+      setImageAttachment({ base64: dataUrl.split(",")[1] ?? dataUrl, mimeType: file.type || "image/png" });
     };
     reader.readAsDataURL(file);
   };
@@ -58,9 +64,12 @@ export default function ChatPanel({ messages, input, onInputChange, onSubmit, pr
   const handleScannerComplete = () => {
     setScannedImage(null);
     const mockEvent = { preventDefault: () => {} } as React.FormEvent;
-    // We mock submitting the extracted image data as text to trigger AI
-    onInputChange({ target: { value: "[IMAGE SCANNED: Structural damage detected on mounting bracket]" } } as any);
-    onSubmit(mockEvent);
+    onSubmit(mockEvent, {
+      imageBase64: imageAttachment?.base64,
+      imageMimeType: imageAttachment?.mimeType,
+      manualContext: ["Use the product manual and field notes whenever they are available."],
+    });
+    setImageAttachment(null);
   };
 
   return (
@@ -104,7 +113,17 @@ export default function ChatPanel({ messages, input, onInputChange, onSubmit, pr
       </div>
 
       <div className="border-t border-border bg-background/80 p-4">
-        <InputBar input={input} onInputChange={onInputChange} onSubmit={onSubmit} disabled={isLoading} onImageUpload={handleImageUpload} />
+        <InputBar
+          input={input}
+          onInputChange={onInputChange}
+          onSubmit={(event) => onSubmit(event, {
+            imageBase64: imageAttachment?.base64,
+            imageMimeType: imageAttachment?.mimeType,
+            manualContext: [productName, "Use the product manual and any uploaded notes as context."],
+          })}
+          disabled={isLoading}
+          onImageUpload={handleImageUpload}
+        />
       </div>
 
       {scannedImage && (

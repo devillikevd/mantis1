@@ -44,10 +44,10 @@ export default function Hero() {
             </div>
 
             <div className="flex flex-wrap gap-4">
-              <Link href="#live-demo">
+              <Link href="/login">
                 <Button size="lg" className="rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600">Try Live Demo <ArrowRight className="ml-2 h-4 w-4" /></Button>
               </Link>
-              <Link href="/signup?role=company">
+              <Link href="/register?role=company">
                 <Button size="lg" variant="outline" className="rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10">List Your Products</Button>
               </Link>
             </div>
